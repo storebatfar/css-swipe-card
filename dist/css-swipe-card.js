@@ -1,6 +1,6 @@
 class CssSwipeCard extends HTMLElement {
   static get version() {
-    return 'v0.9.0';
+    return 'v2026.1';
   }
 
   constructor() {
