@@ -112,9 +112,10 @@ container clips away.
 
 `card_padding` fixes this by giving the slider padding on all four sides. `overflow`
 clips at the *padding* box, not the content box, so the shadow now has somewhere to
-render. The padding is cancelled again with a matching negative inline margin, which
-means the slide keeps its full width and the card lines up exactly where it would
-without a slider around it.
+render. The padding is cancelled again with a matching negative margin on both axes,
+which means the slide keeps its full width and the card occupies exactly the space it
+would without a slider around it — the padding box grows outward over the clip margin
+rather than pushing the layout around.
 
 ```yaml
 type: custom:css-swipe-card
@@ -134,6 +135,13 @@ Two rules worth knowing:
 - **Leaving `card_padding` unset preserves the old behaviour**, where the side padding
   simply tracked `card_gap`. Existing configurations render as they always did; only
   the snap position is corrected, so a sliver of the next slide no longer shows.
+
+> **Upgrading from v2026.1–v2026.3?** Those releases cancelled the padding on the inline
+> axis only, so a card with an explicit `card_padding` sat that many pixels lower than
+> its neighbours and measured `2 × card_padding` taller than its contents. v2026.4
+> cancels the block axis too. Every card that sets `card_padding` will therefore move up
+> by its padding value and lose that much dead space top and bottom — worth a look at any
+> layout you had tuned around the old behaviour.
 
 ## Styles
 

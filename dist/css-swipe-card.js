@@ -1,6 +1,6 @@
 class CssSwipeCard extends HTMLElement {
   static get version() {
-    return 'v2026.3';
+    return 'v2026.4';
   }
 
   constructor() {
@@ -118,6 +118,11 @@ class CssSwipeCard extends HTMLElement {
     // where the side padding simply tracked card_gap.
     const padCross = this.paddingIsExplicit ? pad : '0px';
     const marginInline = this.paddingIsExplicit ? `calc(-1 * ${pad})` : '0px';
+    // The block axis needs the same cancellation. Only the inline one used to be
+    // undone, so the padding stayed in layout: the slider sat `card_padding`
+    // lower than whatever it was lined up against and measured `2 * card_padding`
+    // taller than the cards inside it.
+    const marginBlock = this.paddingIsExplicit ? `calc(-1 * ${pad})` : '0px';
     // A neighbouring slide sits flush against the clip edge, so its shadow
     // bleeds into view unless the gap clears the padding by a shadow's width.
     const gapFloor = (this.paddingIsExplicit && parseFloat(pad) > 0)
@@ -201,9 +206,12 @@ class CssSwipeCard extends HTMLElement {
         gap: max(var(--slides-gap), ${gapFloor});
         padding-inline: ${pad};
         padding-block: ${padCross};
-        /* Cancel the inline padding in layout so the slide keeps its full
-           width; the padding box grows outward over the clip margin instead. */
+        /* Cancel the padding in layout on both axes so the slide keeps its full
+           width and the card occupies exactly the space it would without a
+           slider around it; the padding box grows outward over the clip margin
+           instead. */
         margin-inline: ${marginInline};
+        margin-block: ${marginBlock};
         scroll-padding-inline: ${pad};
       }
       #${this.cardId} .slider-vertical {
@@ -219,6 +227,7 @@ class CssSwipeCard extends HTMLElement {
         padding-block: ${pad};
         padding-inline: ${padCross};
         margin-inline: ${marginInline};
+        margin-block: ${marginBlock};
         scroll-padding-block: ${pad};
       }
       #${this.cardId} .slider-horizontal,
