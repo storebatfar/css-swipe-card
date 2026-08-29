@@ -136,6 +136,12 @@ Two rules worth knowing:
   simply tracked `card_gap`. Existing configurations render as they always did; only
   the snap position is corrected, so a sliver of the next slide no longer shows.
 
+One more consequence of the gap worth knowing: an element that deliberately overhangs its
+slide — a badge pinned to the card's edge, say — lands *in* the gap, where the neighbouring
+slide's padding box still paints it. `--slides-shadow-clearance` is sized for a shadow's
+blur, so raise `card_gap` to at least `card_padding + overhang + blur` if you have content
+like that, or you will see a sliver of the previous slide's badge.
+
 > **Upgrading from v2026.1–v2026.3?** Those releases cancelled the padding on the inline
 > axis only, so a card with an explicit `card_padding` sat that many pixels lower than
 > its neighbours and measured `2 × card_padding` taller than its contents. v2026.4

@@ -1,6 +1,6 @@
 class CssSwipeCard extends HTMLElement {
   static get version() {
-    return 'v2026.4';
+    return 'v2026.5';
   }
 
   constructor() {
@@ -524,13 +524,25 @@ class CssSwipeCard extends HTMLElement {
     });
   }
 
+  // The slides are separated by `gap`, so the distance between two snap points
+  // is one card plus one gap — never the card alone. Read it back from the
+  // computed style rather than config.card_gap, because the rendered value is
+  // floored at `card_padding + var(--slides-shadow-clearance)` and can be
+  // larger than what was configured.
+  getSlideGap(slider, isHorizontal) {
+    const styles = getComputedStyle(slider);
+    const gap = parseFloat(isHorizontal ? styles.columnGap : styles.rowGap);
+    return isNaN(gap) ? 0 : gap;
+  }
+
   // Current index update method
   updateCurrentIndex() {
     const slider = this.shadowRoot.querySelector(`.${this.config.template}`);
     const isHorizontal = this.config.template === 'slider-horizontal';
     const scrollPosition = isHorizontal ? slider.scrollLeft : slider.scrollTop;
     const viewportSize = isHorizontal ? slider.clientWidth : slider.clientHeight;
-    
+    const gap = this.getSlideGap(slider, isHorizontal);
+
     let accumulatedSize = 0;
     for (let i = 0; i < this._cards.length; i++) {
       const cardSize = isHorizontal ? this._cards[i].clientWidth : this._cards[i].clientHeight;
@@ -538,7 +550,7 @@ class CssSwipeCard extends HTMLElement {
         this.currentIndex = i;
         break;
       }
-      accumulatedSize += cardSize;
+      accumulatedSize += cardSize + gap;
     }
   }
 
@@ -685,10 +697,11 @@ class CssSwipeCard extends HTMLElement {
     if (!slider) return;
 
     const isHorizontal = this.config.template === 'slider-horizontal';
+    const gap = this.getSlideGap(slider, isHorizontal);
     let scrollPosition = 0;
 
     for (let i = 0; i < index; i++) {
-      scrollPosition += isHorizontal ? this._cards[i].clientWidth : this._cards[i].clientHeight;
+      scrollPosition += (isHorizontal ? this._cards[i].clientWidth : this._cards[i].clientHeight) + gap;
     }
 
     slider.scrollTo({
@@ -714,7 +727,14 @@ class CssSwipeCard extends HTMLElement {
       const isHorizontal = this.config.template === 'slider-horizontal';
       const maxIndex = this._cards.length - 1;
       const safeIndex = Math.max(0, Math.min(Math.round(index), maxIndex));
-      const scrollPosition = safeIndex * (isHorizontal ? slider.clientWidth : slider.clientHeight);
+      // Step by the slide itself plus the gap. clientWidth was standing in for
+      // that, which only matched while `2 * card_padding` happened to equal the
+      // gap — it drifts by a whole slide once either value changes.
+      const first = this._cards[0];
+      const slideSize = first
+        ? (isHorizontal ? first.clientWidth : first.clientHeight)
+        : (isHorizontal ? slider.clientWidth : slider.clientHeight);
+      const scrollPosition = safeIndex * (slideSize + this.getSlideGap(slider, isHorizontal));
     
       const scrollEndHandler = () => {
         slider.removeEventListener('scrollend', scrollEndHandler);
