@@ -1,6 +1,6 @@
 class CssSwipeCard extends HTMLElement {
   static get version() {
-    return 'v2026.5';
+    return 'v2026.6';
   }
 
   constructor() {
@@ -31,6 +31,7 @@ class CssSwipeCard extends HTMLElement {
       navigation_next: '',
       navigation_prev: '',
       custom_css: {},
+      current_slide_entity: null,
       cardId: this.cardId,
       ...config
     };
@@ -543,6 +544,7 @@ class CssSwipeCard extends HTMLElement {
     const viewportSize = isHorizontal ? slider.clientWidth : slider.clientHeight;
     const gap = this.getSlideGap(slider, isHorizontal);
 
+    const previousIndex = this.currentIndex;
     let accumulatedSize = 0;
     for (let i = 0; i < this._cards.length; i++) {
       const cardSize = isHorizontal ? this._cards[i].clientWidth : this._cards[i].clientHeight;
@@ -552,6 +554,28 @@ class CssSwipeCard extends HTMLElement {
       }
       accumulatedSize += cardSize + gap;
     }
+    if (this.currentIndex !== previousIndex) {
+      this.publishCurrentSlide();
+    }
+  }
+
+  // Report the visible slide (1-based) to an input_number so other cards can
+  // react to it. The inbound input_number.<cardId> helper cannot double for
+  // this: a non-zero value there means "scroll to this slide" and is reset to 0.
+  // Skipped when the helper already holds the value, so a scroll that stays on
+  // the same slide - or a dashboard reload - costs no service call.
+  publishCurrentSlide() {
+    const entity = this.config.current_slide_entity;
+    if (!entity || !this._hass) {
+      return;
+    }
+    const state = this._hass.states[entity];
+    const value = this.currentIndex + 1;
+    if (!state || parseFloat(state.state) === value) {
+      return;
+    }
+    this._hass.callService('input_number', 'set_value', { entity_id: entity, value })
+      .catch((error) => console.error('Failed to publish current slide:', error));
   }
 
   // Home Assistant integration methods
@@ -562,6 +586,8 @@ class CssSwipeCard extends HTMLElement {
     if (!oldHass) {
       this.setupInputNumberListener();
       this.checkInputNumberState();
+      // A reload starts on the first slide; clear whatever the helper was left at.
+      this.publishCurrentSlide();
     }
 
     const cardContainer = this.shadowRoot.querySelector(`.${this.config.template}`);

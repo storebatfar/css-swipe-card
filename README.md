@@ -102,6 +102,7 @@ Add a card with type `custom:css-swipe-card`:
 | `navigation_next` | icon | none | any icon in home assistant (mdi:xxx; fas:xxx) | set icon in navigation button next |
 | `navigation_prev` | icon | none | any icon in home assistant (mdi:xxx; fas:xxx) | set icon in navigation button previous |
 | `custom_css` | | none | see [`Styling`](#styling) | customize design of the swipe card based on various shortcuts |
+| `current_slide_entity` | string | none | an `input_number` entity id | the card writes the visible slide number (1, 2, …) to this helper on every slide change and on load, so other cards can react to it — see [`Automations`](#automations) |
 
 ## Drop shadows
 
@@ -254,6 +255,20 @@ condition: []
       entity_id: input_number.YourCardId
 mode: single
 ```
+
+### Reporting the visible slide
+
+`current_slide_entity` works the other way round from the `input_number.<cardId>` helper above: the card *writes* the number of the slide that is showing (1-based) to the helper you name, whenever it changes and once when the dashboard loads. Create an `input_number` helper (min 0, max = number of slides, step 1) and point the option at it. Other cards can then react to its state, for example with card-mod:
+
+```yaml
+card_mod:
+  style: |
+    ha-card {
+      {% if states('input_number.calendar_slide') | int(1) not in [1, 2] %}opacity: 0.35;{% endif %}
+    }
+```
+
+On a wall panel with several tablets, give each tablet its own helper, or swiping on one moves the state on all of them.
 
 ## Credits
 
