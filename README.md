@@ -102,6 +102,7 @@ Add a card with type `custom:css-swipe-card`:
 | `navigation_next` | icon | none | any icon in home assistant (mdi:xxx; fas:xxx) | set icon in navigation button next |
 | `navigation_prev` | icon | none | any icon in home assistant (mdi:xxx; fas:xxx) | set icon in navigation button previous |
 | `custom_css` | | none | see [`Styling`](#styling) | customize design of the swipe card based on various shortcuts |
+| `slide_css_variable` | string | none | a CSS custom property name, e.g. `--calendar-slide` | sets `--name` (visible slide, 1-based) and `--name-1`, `--name-2`, … (1 for the visible slide, 0 otherwise) on the page root, so any card on the page can react instantly without a helper — see [`Automations`](#automations) |
 | `current_slide_entity` | string | none | an `input_number` entity id | the card writes the visible slide number (1, 2, …) to this helper on every slide change and on load, so other cards can react to it — see [`Automations`](#automations) |
 
 ## Drop shadows
@@ -255,6 +256,28 @@ condition: []
       entity_id: input_number.YourCardId
 mode: single
 ```
+
+### Styling other cards from the visible slide
+
+`slide_css_variable` is the lightweight way to make other cards react to the swiper. The card keeps these custom properties on the document root; custom properties inherit through shadow DOM, so every card on the page can read them — instantly, per device, and without writing any Home Assistant state:
+
+| Property | Value |
+| --- | --- |
+| `--calendar-slide` | number of the visible slide (1, 2, …) |
+| `--calendar-slide-1`, `--calendar-slide-2`, … | `1` for the visible slide, `0` for the others |
+
+Dim a card unless slide 2 is showing:
+
+```yaml
+card_mod:
+  style: |
+    ha-card {
+      transition: opacity 0.3s ease;
+      opacity: calc(1 - 0.65 * (var(--calendar-slide-1, 0) + var(--calendar-slide-3, 0)));
+    }
+```
+
+The properties are removed when the swiper leaves the page.
 
 ### Reporting the visible slide
 

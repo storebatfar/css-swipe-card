@@ -1,6 +1,6 @@
 class CssSwipeCard extends HTMLElement {
   static get version() {
-    return 'v2026.6';
+    return 'v2026.7';
   }
 
   constructor() {
@@ -32,6 +32,7 @@ class CssSwipeCard extends HTMLElement {
       navigation_prev: '',
       custom_css: {},
       current_slide_entity: null,
+      slide_css_variable: null,
       cardId: this.cardId,
       ...config
     };
@@ -87,6 +88,7 @@ class CssSwipeCard extends HTMLElement {
     }
 
     this.setupTimer();
+    this.publishSlideCssVariables();
 
     // Returning from the background is not guaranteed to resize anything, so
     // the ResizeObserver may never fire to undo a collapsed layout. Re-measure
@@ -556,7 +558,45 @@ class CssSwipeCard extends HTMLElement {
     }
     if (this.currentIndex !== previousIndex) {
       this.publishCurrentSlide();
+      this.publishSlideCssVariables();
     }
+  }
+
+  // Expose the visible slide as CSS custom properties on the document root.
+  // Custom properties inherit through shadow roots, so any card on the page can
+  // style itself from them - instantly, per device, with no round trip to Home
+  // Assistant. `--name` holds the 1-based slide number and `--name-N` is 1 for
+  // the visible slide and 0 for the rest, which keeps consumer CSS to calc().
+  publishSlideCssVariables() {
+    const name = this.slideCssVariableName();
+    if (!name || !this._cards) {
+      return;
+    }
+    const root = document.documentElement.style;
+    root.setProperty(name, String(this.currentIndex + 1));
+    this._cards.forEach((_, i) => {
+      root.setProperty(`${name}-${i + 1}`, i === this.currentIndex ? '1' : '0');
+    });
+  }
+
+  // Leaving the page must not strand the last slide's values on the root,
+  // or cards elsewhere would keep reacting to a swiper that is gone.
+  clearSlideCssVariables() {
+    const name = this.slideCssVariableName();
+    if (!name || !this._cards) {
+      return;
+    }
+    const root = document.documentElement.style;
+    root.removeProperty(name);
+    this._cards.forEach((_, i) => root.removeProperty(`${name}-${i + 1}`));
+  }
+
+  slideCssVariableName() {
+    const name = this.config.slide_css_variable;
+    if (!name) {
+      return null;
+    }
+    return name.startsWith('--') ? name : `--${name}`;
   }
 
   // Report the visible slide (1-based) to an input_number so other cards can
@@ -799,7 +839,14 @@ class CssSwipeCard extends HTMLElement {
   }
 
   // Cleanup method
+  // Home Assistant can detach and re-attach a card without rebuilding it, and
+  // disconnectedCallback cleared the variables on the way out.
+  connectedCallback() {
+    this.publishSlideCssVariables();
+  }
+
   disconnectedCallback() {
+    this.clearSlideCssVariables();
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
     }
